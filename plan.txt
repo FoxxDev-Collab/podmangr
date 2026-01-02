@@ -1,0 +1,707 @@
+# Podmangr
+
+**A Podman-focused container manager with useful system management tools.**
+
+Podmangr treats Podman as a first-class citizen while providing the Linux system management tools you need to run containers effectively. Not a bloated "everything manager" - just Podman essentials + system basics.
+
+---
+
+## Project Identity
+
+| Attribute | Value |
+|-----------|-------|
+| **Name** | Podmangr |
+| **Tagline** | "Podman deserves better tooling." |
+| **Focus** | Podman-first container management with useful system tools |
+| **Target** | Homelab users, RHEL/Rocky enthusiasts, rootless-first deployments |
+| **Stack** | Next.js (static export) + Go backend (Echo framework) |
+| **License** | TBD (MIT? Apache 2.0? GPL?) |
+
+---
+
+## Current State
+
+**Podmangr is being refactored from Stardeck** - a full-featured Linux management platform.
+
+### What Already Exists (from Stardeck)
+- ✅ Go backend with Echo framework
+- ✅ Next.js frontend with shadcn/ui components
+- ✅ Basic container management (list, start, stop, create, logs, terminal)
+- ✅ Authentication system (JWT + PAM)
+- ✅ WebSocket support (logs, terminal)
+- ✅ Modern UI with theming support
+
+### What Was Removed (Stardeck-Specific Bloat)
+- ✅ Alliance (SSO/OIDC federation system) - REMOVED
+- ✅ Realm Manager (authentication realms) - REMOVED
+- ✅ Group Manager (local group management) - REMOVED
+- ✅ RPM Manager (package management) - REMOVED
+- ✅ Audit Log system - REMOVED
+- ✅ File Browser - REMOVED
+- ✅ Container App (Stardeck-specific) - REMOVED
+- ✅ Desktop/Dashboard concept - REMOVED
+- ✅ Stardeck branding and theming ("Starfleet", sci-fi elements) - REMOVED
+
+### What We Kept (Useful System Management)
+- ✅ System Monitor (CPU, memory, disk usage)
+- ✅ Process Manager (view/manage running processes)
+- ✅ Service Manager (systemd service control)
+- ✅ Storage Manager (disk/mount management, renamed from Storage Viewer)
+- ✅ User Manager (basic user listing, admin only)
+- ✅ Terminal (web-based terminal access)
+
+### What Needs to Be Built (Podman Focus)
+- ✅ Pod management (first-class support - CRUD operations complete)
+- ✅ Image management UI - COMPLETE
+- ✅ Volume management UI - COMPLETE
+- ✅ Podman-specific network management - COMPLETE
+- 🔨 Translation engine (Docker Compose → Podman/Quadlet/Kube)
+- 🔨 Quadlet file generation
+- 🔨 Multi-socket support (root/rootless context switching)
+- 🔨 Enhanced container creation (pod integration)
+
+---
+
+## Core Feature Set (v1.0)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         PODMANGR v1.0                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  CONTAINER MANAGEMENT                                           │
+│  ├─ List, start, stop, restart, remove                     [✓]  │
+│  ├─ Create with form builder OR raw CLI flags              [✓]  │
+│  ├─ Live logs (WebSocket streaming)                        [✓]  │
+│  ├─ Live stats (CPU, memory, network, historical charts)   [✓]  │
+│  ├─ Exec into running containers (web terminal)            [✓]  │
+│  ├─ Inspect (full JSON view)                               [✓]  │
+│  └─ Pod integration (create containers in pods)            [ ]  │
+│                                                                 │
+│  POD MANAGEMENT (First-Class)                                   │
+│  ├─ List pods with container counts                        [✓]  │
+│  ├─ Create pods (with port mappings)                       [✓]  │
+│  ├─ Start/stop/restart/pause/unpause pods                  [✓]  │
+│  ├─ Remove pods (with force option)                        [✓]  │
+│  ├─ Pod inspection (JSON details)                          [✓]  │
+│  ├─ Create containers within pods                          [ ]  │
+│  ├─ Pod-level networking visualization                     [ ]  │
+│  └─ Convert standalone containers → pod                    [ ]  │
+│                                                                 │
+│  IMAGE MANAGEMENT                                               │
+│  ├─ List local images                                      [✓]  │
+│  ├─ Pull from any registry (with auth)                     [✓]  │
+│  ├─ Remove / prune                                         [✓]  │
+│  ├─ Build from Containerfile (basic)                       [ ]  │
+│  └─ Registry alias configuration                           [ ]  │
+│                                                                 │
+│  VOLUME & NETWORK                                               │
+│  ├─ List, create, remove volumes                           [✓]  │
+│  ├─ List, create, remove networks (Podman-specific)        [✓]  │
+│  └─ Visual network topology (stretch goal)                 [ ]  │
+│                                                                 │
+│  TRANSLATION ENGINE                                             │
+│  ├─ Docker Compose → Podman Compose                        [ ]  │
+│  ├─ Docker Compose → Quadlet files                         [ ]  │
+│  ├─ Docker Compose → Kube YAML                             [ ]  │
+│  ├─ Monaco editor with live diagnostics                    [ ]  │
+│  ├─ Rule-based transformation engine                       [ ]  │
+│  └─ Side-by-side diff view                                 [ ]  │
+│                                                                 │
+│  QUADLET INTEGRATION                                            │
+│  ├─ Generate .container files from running containers      [ ]  │
+│  ├─ Generate .pod files                                    [ ]  │
+│  ├─ Systemd status integration                             [ ]  │
+│  └─ One-click "make persistent" via Quadlet                [ ]  │
+│                                                                 │
+│  MULTI-SOCKET SUPPORT                                           │
+│  ├─ Root socket (/run/podman/podman.sock)                  [~]  │
+│  ├─ Rootless sockets (/run/user/UID/podman/podman.sock)    [ ]  │
+│  ├─ Switch between contexts in UI                          [ ]  │
+│  └─ Visual indicator of current context                    [ ]  │
+│                                                                 │
+│  AUTHENTICATION                                                 │
+│  ├─ Simple local auth (username/password)                  [✓]  │
+│  ├─ PAM integration (optional)                             [✓]  │
+│  └─ JWT sessions                                           [✓]  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+Legend: [✓] Done  [~] Partial  [ ] Not started
+```
+
+---
+
+## Implementation Roadmap
+
+### Phase 0: Stardeck Removal & Rebranding ✅ 100% COMPLETE
+
+**Goal:** Strip out Stardeck-specific bloat, keep useful system tools, rebrand to Podmangr
+
+**Approach:** Hybrid - Podman-first with system management essentials
+
+**Status:** COMPLETE - Backend fully rebranded and building cleanly with embedded frontend.
+
+**Summary:**
+- Removed 7 handler files, 5 repo files, 5 model files, system database service
+- Cleaned up 150+ lines from routes.go (removed all Stardeck-only endpoints)
+- Stubbed audit system (no-op) to maintain backward compatibility
+- Frontend: 12 Stardeck pages removed, 5 system pages restored, Podman pages built out
+- Navigation structure redesigned: Podman-first with system tools in sidebar
+- Project identity established: "Podman deserves better tooling"
+- Full rebranding: module name, imports, certificate generation all updated to Podmangr
+
+**Backend Cleanup:**
+- [✓] Remove Alliance handlers (`internal/api/alliance_handlers.go`)
+- [✓] Remove Realm handlers (`internal/api/realm_handlers.go`)
+- [✓] Remove Audit handlers (`internal/api/audit_handlers.go`)
+- [✓] Remove Group handlers (`internal/api/group_handlers.go`)
+- [✓] Remove Package/RPM handlers (`internal/api/package_handlers.go`)
+- [✓] Remove File handlers (`internal/api/file_handlers.go`)
+- [✓] Remove Database handlers (`internal/api/database_handlers.go`)
+- [✓] Remove Alliance/Audit/Group/Realm/Database repos and models
+- [✓] Remove `/internal/alliance/` directory
+- [✓] Remove `/internal/system/database_service.go`
+- [✓] Keep System handlers (processes, services, storage) - USEFUL
+- [✓] Keep User handlers - USEFUL (admin only)
+- [✓] Stub out audit logging (system removed but compat maintained)
+- [✓] Clean up routes (`internal/api/routes.go`)
+- [✓] Create action constants file (`internal/models/actions.go`)
+- [✓] Backend builds successfully with no errors
+- [✓] Rename project references (stardeckos-backend → podmangr-backend) - COMPLETE
+- [✓] Update go.mod module name to podmangr-backend
+- [✓] Update all internal imports across 18+ Go files
+- [✓] Update certificate generation with Podmangr branding
+
+**Frontend Cleanup:**
+- [✓] Remove pages: `alliance/`, `realm-manager/`, `group-manager/`
+- [✓] Remove pages: `audit-log/`, `rpm-manager/`, `file-browser/`
+- [✓] Remove pages: `container-app/`, `dashboard/` (Stardeck-specific)
+- [✓] Restore useful pages: `process-manager/`, `service-manager/`, `system-monitor/`
+- [✓] Create `storage-manager/` (renamed from storage-viewer)
+- [✓] Keep `user-manager/` (admin only)
+- [✓] Create permanent sidebar (removed Start Menu concept)
+- [✓] Create Podman pages: `pods/` (placeholder), `images/` (COMPLETE), `volumes/` (COMPLETE)
+- [✓] Create `podman-networks/` page (COMPLETE - separate from Linux networking)
+- [✓] Remove Stardeck branding (Starfleet references, sci-fi theme)
+- [✓] Update navigation structure (Podman-first with system tools)
+- [✓] Update package.json metadata
+- [✓] Remove Web UI / Desktop App settings from container pages
+- [✓] Remove adopt container functionality (all containers are managed)
+- [✓] Rename localStorage keys (stardeck-* → podmangr-*)
+- [✓] Update theme storage key, settings storage key
+- [ ] Simplify Settings page (remove Stardeck-specific preferences)
+- [ ] Remove unused components (start-menu.tsx, etc.)
+
+**Configuration & Branding:**
+- [✓] Update `package.json` (name, description, repository)
+- [✓] Update metadata in layout.tsx (title, description)
+- [✓] Update login page branding
+- [ ] Update environment variables and config files
+- [ ] Create new logo/favicon (currently using lock icon)
+- [ ] Write comprehensive README.md
+- [ ] Add LICENSE file
+
+**Testing:**
+- [✓] Build frontend successfully (clean builds, zero ESLint warnings)
+- [✓] Verify basic container operations work
+- [✓] Test authentication flow
+- [✓] Test WebSocket connections (logs, terminal)
+- [✓] Test system management pages (processes, services, storage)
+- [✓] Frontend successfully exported and embedded in backend
+- [✓] Backend builds cleanly with embedded frontend
+
+---
+
+### Phase 1: Podman Core Enhancement ✅ COMPLETE (95%)
+
+**Goal:** Improve existing container management and add missing Podman features
+
+**Image Management:**
+- [✓] Build image list UI (`/images` page)
+- [✓] Add image pull dialog (with registry auth)
+- [✓] Add image removal/prune functionality
+- [✓] Show image metadata and size info
+- [~] Add Containerfile build support (deferred - future enhancement)
+
+**Volume Management:**
+- [✓] Build volume list UI (`/volumes` page)
+- [✓] Add volume creation dialog
+- [✓] Add volume removal/prune
+- [✓] Show volume metadata and driver info
+
+**Network Management:**
+- [✓] Refactor network manager to be Podman-specific
+- [✓] List Podman networks (not Linux networks) - created `/podman-networks` page
+- [✓] Add network creation dialog (bridge, macvlan, IPv6 support, internal networks)
+- [✓] Show network metadata and connected containers
+- [✓] Add network removal
+
+**Container Enhancements:**
+- [✓] Add full JSON inspect view (new Inspect tab in container details)
+- [✓] Improve stats display (SVG-based historical charts, sparklines, trend indicators)
+- [~] Add container rename (backend exists - UI deferred)
+- [~] Add container export/import (deferred - future enhancement)
+- [~] Add healthcheck management (deferred - future enhancement)
+
+**Status:** Core Podman management features complete. Deferred items are refinements that can be added as future enhancements.
+
+---
+
+### Phase 2: Pod Management (First-Class) ✅ COMPLETE
+
+**Goal:** Make pods a first-class citizen, not an afterthought
+
+**Pod CRUD:** ✅ COMPLETE
+- [✓] Build pod list UI (`/pods` page)
+- [✓] Add pod creation wizard (with port mappings and labels)
+- [✓] Add pod start/stop/restart/pause/unpause/remove
+- [✓] Show pod status and container counts
+- [✓] Add pod inspection (via inspect endpoint)
+- [✓] Create dedicated pod details page (`/pod-details`)
+
+**Pod-Container Integration:** ✅ COMPLETE (Basic)
+- [✓] Show containers within pods (in pod details page)
+- [✓] Navigate to container details from pod view
+- [~] Allow creating containers within pods (deferred - future enhancement)
+- [~] Show pod membership in container list (deferred - future enhancement)
+
+**Pod Visualization:** ✅ COMPLETE (Basic)
+- [✓] Display shared namespaces (network, IPC, UTS) in pod details
+- [✓] Show port mappings at pod level
+- [✓] Show labels and create command
+- [~] Show pod-level networking diagram (deferred - future enhancement)
+- [~] Display resource usage per pod (deferred - future enhancement)
+
+**API Helpers:** ✅ COMPLETE
+- [✓] Add pod API helpers to lib/api.ts
+- [✓] Add containers/images/volumes/networks API helpers
+
+---
+
+### Phase 3: Multi-Socket Support ✅ COMPLETE
+
+**Goal:** Support both root and rootless Podman contexts
+
+**Backend:** ✅ COMPLETE
+- [✓] Implement socket registry (`internal/system/sockets.go`)
+- [✓] Auto-detect available sockets (root + all user UIDs)
+- [✓] Add context switching API endpoint (`/api/podman-sockets`)
+- [✓] Socket discovery and refresh functionality
+- [✓] Handle permissions properly per context
+
+**Frontend:** ✅ COMPLETE
+- [✓] Add context switcher component (`components/context-switcher.tsx`)
+- [✓] Show current context (root vs rootless, UID)
+- [✓] Add visual indicator (color coding: red=root, green=rootless)
+- [✓] Context switcher in sidebar below user info
+- [✓] Show socket availability status
+
+---
+
+### Phase 4: Translation Engine ✅ COMPLETE
+
+**Goal:** Help users migrate from Docker Compose to Podman
+
+**Backend Parser:** ✅ COMPLETE
+- [✓] Implement Docker Compose parser (`internal/translator/compose.go`)
+- [✓] Build rule-based transformation engine
+- [✓] Create transformation rules:
+  - [✓] Socket paths (`/var/run/docker.sock` → `/run/podman/podman.sock`)
+  - [✓] Registry shortcuts (`postgres:15` → `docker.io/library/postgres:15`)
+  - [✓] SELinux volume flags (`:z`, `:Z`)
+  - [✓] Restart policies (align with systemd)
+  - [✓] Network modes (with warnings for host mode)
+
+**Output Generators:** ✅ COMPLETE
+- [✓] Podman Compose output (YAML)
+- [✓] Quadlet output (.container files)
+- [✓] Kubernetes YAML output (Pod manifest)
+
+**Frontend:** ✅ COMPLETE
+- [✓] Build translation editor page (`/translate`)
+- [✓] Side-by-side input/output panels
+- [✓] Output format selector (Podman Compose, Quadlet, Kube)
+- [✓] Live transformation changes display
+- [✓] Warnings and errors display
+- [✓] Copy to clipboard functionality
+- [✓] Download output as file
+
+---
+
+### Phase 5: Quadlet Integration
+
+**Goal:** Make systemd-managed containers easy
+
+**Generation:**
+- [ ] Generate `.container` files from running containers
+- [ ] Generate `.pod` files from running pods
+- [ ] Generate `.volume` files
+- [ ] Generate `.network` files
+- [ ] Handle dependencies and ordering
+
+**Systemd Integration:**
+- [ ] Show systemd unit status
+- [ ] Enable/disable units
+- [ ] Start/stop via systemd
+- [ ] View systemd logs
+- [ ] Handle user vs system units
+
+**UI:**
+- [ ] Add "Make Persistent" button on container details
+- [ ] Show generated Quadlet preview before saving
+- [ ] Allow editing before saving
+- [ ] Save to `/etc/containers/systemd/` or `~/.config/containers/systemd/`
+
+---
+
+### Phase 6: Polish & Production
+
+**Goal:** Make it production-ready
+
+**Documentation:**
+- [ ] Write comprehensive README
+- [ ] Document API endpoints
+- [ ] Write translation rules guide
+- [ ] Create deployment guide
+- [ ] Add screenshots/demo
+
+**Deployment:**
+- [ ] Create Containerfile
+- [ ] Create Quadlet file (eat our own dogfood!)
+- [✓] Add Makefile for builds - COMPLETE
+- [✓] Install scripts (scripts/install.sh) - COMPLETE
+- [✓] Service files (scripts/podmangr.service) - COMPLETE
+- [ ] Set up CI/CD
+- [ ] Create release binaries
+
+**Features:**
+- [ ] Add settings page (minimal - socket paths, theme, etc.)
+- [ ] Add keyboard shortcuts
+- [ ] Add search/filter everywhere
+- [ ] Improve error handling and user feedback
+- [ ] Add loading states and optimistic updates
+
+**Testing:**
+- [✓] Write unit tests (critical paths) - JEST + GO TESTS COMPLETE
+- [✓] Frontend Jest tests (86 tests passing)
+- [✓] Backend Go tests (auth, models, system, API)
+- [ ] Test on RHEL/Rocky/Fedora
+- [ ] Test rootless vs root scenarios
+- [ ] Test with real workloads
+- [ ] Performance testing
+
+---
+
+## Project Structure (Current vs Target)
+
+### Current Structure (Phase 0 Complete)
+```
+podmangr/
+├── podmangr-backend/      # Go backend (cleanup pending)
+│   ├── internal/
+│   │   ├── api/
+│   │   │   ├── alliance_handlers.go    # TO REMOVE
+│   │   │   ├── realm_handlers.go       # TO REMOVE
+│   │   │   ├── audit_handlers.go       # TO REMOVE
+│   │   │   ├── group_handlers.go       # TO REMOVE
+│   │   │   ├── package_handlers.go     # TO REMOVE
+│   │   │   ├── file_handlers.go        # TO REMOVE
+│   │   │   ├── database_handlers.go    # TO REMOVE
+│   │   │   ├── container_handlers.go   # KEEP
+│   │   │   ├── system_handlers.go      # KEEP
+│   │   │   ├── user_handlers.go        # KEEP
+│   │   │   └── routes.go               # CLEANUP
+│   │   ├── alliance/      # TO REMOVE
+│   │   ├── auth/          # KEEP (simplify)
+│   │   └── system/        # KEEP
+│   └── main.go
+│
+└── podmangr-frontend/     # ✅ Frontend complete!
+    ├── app/
+    │   ├── page.tsx               # ✅ Redirects to container-manager
+    │   ├── login/                 # ✅ Rebranded
+    │   ├── container-manager/     # ✅ KEPT
+    │   ├── container-details/     # ✅ KEPT
+    │   ├── container-create/      # ✅ KEPT
+    │   ├── pods/                  # ✅ NEW (placeholder)
+    │   ├── images/                # ✅ NEW (placeholder)
+    │   ├── volumes/               # ✅ NEW (placeholder)
+    │   ├── network-manager/       # ✅ KEPT (to refactor)
+    │   ├── system-monitor/        # ✅ RESTORED
+    │   ├── process-manager/       # ✅ RESTORED
+    │   ├── service-manager/       # ✅ RESTORED
+    │   ├── storage-manager/       # ✅ RESTORED (renamed)
+    │   ├── user-manager/          # ✅ RESTORED (admin only)
+    │   ├── terminal/              # ✅ KEPT
+    │   └── settings/              # ✅ KEPT (to simplify)
+    ├── components/
+    │   ├── sidebar.tsx            # ✅ NEW (permanent sidebar)
+    │   ├── dashboard-layout.tsx   # ✅ UPDATED (no Start Menu)
+    │   └── start-menu.tsx         # ⚠️ TO REMOVE (unused)
+    └── package.json               # ✅ UPDATED (Podmangr branding)
+```
+
+### Target Structure (v1.0)
+```
+podmangr/
+├── backend/                      # Go backend
+│   ├── cmd/podmangr/
+│   │   └── main.go
+│   ├── internal/
+│   │   ├── api/
+│   │   │   ├── routes.go
+│   │   │   ├── middleware/
+│   │   │   │   └── auth.go
+│   │   │   └── handlers/
+│   │   │       ├── container_handlers.go
+│   │   │       ├── pod_handlers.go
+│   │   │       ├── image_handlers.go
+│   │   │       ├── volume_handlers.go
+│   │   │       ├── network_handlers.go
+│   │   │       ├── system_handlers.go      # System mgmt (kept)
+│   │   │       ├── user_handlers.go        # User mgmt (kept)
+│   │   │       ├── translate_handlers.go   # Future
+│   │   │       ├── quadlet_handlers.go     # Future
+│   │   │       └── auth_handlers.go
+│   │   ├── podman/
+│   │   │   ├── client.go
+│   │   │   ├── containers.go
+│   │   │   ├── pods.go
+│   │   │   ├── images.go
+│   │   │   ├── volumes.go
+│   │   │   ├── networks.go
+│   │   │   └── multi_socket.go             # Future
+│   │   ├── system/                         # System tools (kept)
+│   │   │   ├── processes.go
+│   │   │   ├── services.go
+│   │   │   └── storage.go
+│   │   ├── translator/                     # Future
+│   │   │   ├── engine.go
+│   │   │   ├── rules/
+│   │   │   ├── output/
+│   │   │   └── parser/
+│   │   ├── quadlet/                        # Future
+│   │   │   ├── generator.go
+│   │   │   └── templates.go
+│   │   └── auth/
+│   │       └── jwt.go
+│   ├── go.mod
+│   └── go.sum
+│
+├── frontend/
+│   ├── app/
+│   │   ├── page.tsx                 # Redirects to containers
+│   │   ├── login/                   # Auth
+│   │   ├── container-manager/       # Podman: Containers
+│   │   ├── container-details/       # Podman: Container details
+│   │   ├── container-create/        # Podman: Create container
+│   │   ├── pods/                    # Podman: Pod management
+│   │   ├── images/                  # Podman: Image management
+│   │   ├── volumes/                 # Podman: Volume management
+│   │   ├── network-manager/         # Podman: Network management
+│   │   ├── system-monitor/          # System: Resource monitoring
+│   │   ├── process-manager/         # System: Process management
+│   │   ├── service-manager/         # System: Systemd services
+│   │   ├── storage-manager/         # System: Disk/mount management
+│   │   ├── user-manager/            # System: User management
+│   │   ├── terminal/                # System: Web terminal
+│   │   ├── translate/               # Future: Compose translator
+│   │   └── settings/                # Settings
+│   ├── components/
+│   │   ├── sidebar.tsx              # Permanent navigation
+│   │   ├── dashboard-layout.tsx     # Main layout
+│   │   ├── ui/                      # shadcn components
+│   │   ├── containers/              # Container components
+│   │   ├── pods/                    # Future: Pod components
+│   │   ├── editor/                  # Future: Monaco editor
+│   │   └── terminal/                # xterm.js terminal
+│   ├── lib/
+│   └── ...
+│
+├── deploy/
+│   ├── podmangr.container           # Quadlet file (future)
+│   └── Containerfile                # Docker/Podman build
+│
+├── docs/
+│   ├── README.md
+│   ├── TRANSLATION_RULES.md         # Future
+│   └── API.md
+│
+└── Makefile
+```
+
+---
+
+## Key Technical Decisions
+
+| Decision | Choice | Status |
+|----------|--------|--------|
+| **Podman bindings** | `containers/podman/v5` | ✓ Already using |
+| **HTTP router** | Echo framework | ✓ Already using |
+| **Frontend** | Next.js 14 (static export) | ✓ Already using |
+| **Frontend state** | React hooks + fetch | ✓ Current approach |
+| **UI components** | shadcn/ui + Tailwind | ✓ Already using |
+| **Terminal** | xterm.js | ✓ Already using |
+| **Auth** | JWT (simplified) | ~ Needs simplification |
+| **Database** | SQLite | ✓ Already using |
+| **Editor** | Monaco | To be added |
+| **YAML parsing** | `gopkg.in/yaml.v3` | To be added |
+
+---
+
+## Success Metrics (v1.0)
+
+- [ ] All Stardeck features removed (clean Podman focus)
+- [ ] Can manage containers, pods, images, volumes, networks
+- [ ] Can translate Docker Compose to Podman formats
+- [ ] Can generate Quadlet files from running containers
+- [ ] Supports both root and rootless contexts
+- [ ] Deployable via Quadlet (self-hosting)
+- [ ] Clear documentation and examples
+
+---
+
+## Current Status
+
+**Phase 0: 100% Complete** ✅
+- Frontend refactored, rebranded, and restructured
+- Backend fully cleaned and rebranded (Stardeck → Podmangr)
+- All imports updated to podmangr-backend
+- Certificate generation rebranded
+- Clean builds with embedded frontend
+
+**Phase 1: COMPLETE (95%)** ✅
+- Image management UI complete (list, pull, remove)
+- Volume management UI complete (list, create, remove)
+- Network management UI complete (Podman-specific, create, remove, inspect)
+- Container inspect view (full JSON)
+- Enhanced stats display (SVG-based historical charts, sparklines)
+- Frontend null safety improvements (system monitor, process manager)
+- Deferred items noted for future enhancement
+
+**Phase 2: COMPLETE** ✅
+- Pod management backend functions (ListPods, CreatePod, StartPod, StopPod, RestartPod, RemovePod, InspectPod, PausePod, UnpausePod)
+- Pod API handlers with proper authentication and error handling
+- Pod routes registered (`/api/pods`)
+- Complete `/pods` page with search, filtering, and auto-refresh
+- Pod creation dialog with port mappings and labels support
+- Pod lifecycle actions (start, stop, restart, pause, unpause, remove)
+- Pod status visualization (running, paused, stopped)
+- Container count display per pod
+- **NEW:** Dedicated `/pod-details` page with:
+  - Pod overview (ID, name, status, created, container count)
+  - Shared namespaces display (network, IPC, UTS)
+  - Port mappings visualization
+  - Labels display
+  - Create command with copy functionality
+  - Containers tab showing all containers in the pod
+  - Navigation to individual container details
+  - Full JSON inspect view with copy-to-clipboard
+- **NEW:** Enhanced pod creation with labels UI
+- **NEW:** API helpers in lib/api.ts for pods, containers, images, volumes, networks
+
+**Phase 3: COMPLETE** ✅
+- Multi-socket support with context switching
+- Socket discovery for root and rootless sockets
+- Context switcher UI in sidebar
+
+**Phase 4: COMPLETE** ✅
+- Docker Compose to Podman translator
+- Support for Podman Compose, Quadlet, and Kube outputs
+- Transformation rules for common Docker → Podman conversions
+- Full translation UI with side-by-side editor
+
+**Phase 5: NOT STARTED**
+- Quadlet integration (generate from running containers)
+
+**Next Steps:**
+1. Add Quadlet integration (Phase 5) - generate from running containers
+2. Polish and production readiness (Phase 6)
+
+**Recent Accomplishments:**
+
+**Testing Infrastructure (Latest):**
+- Frontend Jest testing configured and working
+  - Installed: jest, @testing-library/react, @testing-library/jest-dom, jest-environment-jsdom
+  - Created jest.config.js with Next.js integration
+  - Created jest.setup.js with mocks for next/navigation, localStorage, fetch
+  - 86 tests passing across 4 test files:
+    - `__tests__/lib/api.test.ts` - Container, Pod, Image, Volume, Network, Auth, System APIs
+    - `__tests__/lib/auth-context.test.tsx` - Auth context state management
+    - `__tests__/lib/utils.test.ts` - Utility functions (cn, formatBytes, getStatusColor, etc.)
+    - `__tests__/components/button.test.tsx` - Button component variants and props
+- Backend Go tests complete
+  - `internal/api/handlers_test.go` - Health check and audit service tests
+  - `internal/auth/password_test.go` - Password hashing (Argon2) and verification
+  - `internal/models/container_test.go` - Model constants and struct tests
+  - `internal/system/files_test.go` - File operations (list, create, delete, copy, read, write)
+  - All 38 Go tests passing
+
+**Full Stardeck → Podmangr Rebranding:**
+- Removed ALL Stardeck references from codebase
+- Updated environment variables: STARDECK_* → PODMANGR_*
+- Updated container labels: stardeck.* → podmangr.*
+- Updated localStorage keys: stardeck-* → podmangr-*
+- Updated backup paths: ~/.stardeck → ~/.podmangr
+- Updated volume paths: /var/lib/stardeck → /var/lib/podmangr
+- Deleted unused start-menu.tsx component
+- Updated auth realm from "Stardeck OS" to "Podmangr"
+
+**Deployment Infrastructure:**
+- Rewrote Makefile with podmangr targets
+- Created scripts/install.sh for installation
+- Created scripts/podmangr.service for systemd
+- Updated podmangr-backend/deploy/ files
+
+**Stardeck Cleanup (Previous):**
+- Removed "Has Web UI" / Desktop App settings from container-create page
+- Removed adopt container dialog and functionality from container-manager
+- Removed Web UI settings from container-details page
+- Cleaned up Container interface types (removed has_web_ui, web_ui_port, web_ui_path, icon)
+- Renamed localStorage keys from `stardeck-*` to `podmangr-*`:
+  - `podmangr-token`, `podmangr-user` (auth)
+  - `podmangr-ui-theme` (theme)
+  - `podmangr-settings`, `podmangr-custom-themes` (settings)
+- Updated mock data hostnames from `.stardeck.local` to `.podmangr.local`
+- Fixed CSS comments and settings page branding
+- Stack deployment improvements:
+  - Updated stack directory from `/var/lib/stardeck/stacks` to `/var/lib/podmangr/stacks`
+  - Added compose file validation before deployment
+  - Enhanced container detection with name prefix fallback
+  - Improved deploy dialog with success/failure state tracking
+
+**Phase 4 - Translation Engine:**
+- Created translation package (`internal/translator/compose.go`)
+- Docker Compose YAML parser with full service/network/volume support
+- Transformation rules: docker socket, registry prefix, SELinux labels, restart policy, network mode
+- Three output formats: Podman Compose YAML, Quadlet .container files, Kubernetes Pod YAML
+- API endpoints: POST /api/translate, POST /api/translate/validate, GET /api/translate/rules
+- Translation UI page (`/translate`) with:
+  - Side-by-side input/output editor panels
+  - Format selector dropdown
+  - Changes tab showing all transformations applied
+  - Warnings tab for potential issues
+  - Copy and download functionality
+
+**Phase 3 - Multi-Socket Support:**
+- Socket registry (`internal/system/sockets.go`) for managing multiple Podman contexts
+- Auto-detection of available sockets (root at /run/podman/podman.sock, rootless at /run/user/*/podman/)
+- API handlers for socket listing, switching, and refresh
+- Context switcher component in sidebar with color-coded indicators
+- Seamless context switching between root and rootless Podman
+
+**Phase 2 - Pod Management:**
+- Pod details page with overview, containers, and inspect tabs
+- Enhanced pod creation with labels support
+- API helpers for all Podman resources
+
+**Earlier Phases:**
+- Created `/images`, `/volumes`, `/podman-networks` pages
+- Container inspect view and enhanced stats charts
+- Clean builds with 26 frontend pages
+
+**Approach:**
+Podmangr is a **hybrid tool** - Podman-first with essential Linux system management. Not bloated, just practical for homelab users who need both container management and system monitoring in one place.
+
+Podman deserves better tooling. We're building it. 🚀

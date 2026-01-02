@@ -1,0 +1,35 @@
+[Unit]
+Description=Podmangr - Podman Container Management
+Documentation=https://github.com/podmangr/podmangr
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+
+# Working directory and binary
+WorkingDirectory=/var/lib/podmangr
+ExecStart=/opt/podmangr/podmangr
+
+# Environment variables
+Environment=PODMANGR_DB_PATH=/var/lib/podmangr/podmangr.db
+Environment=PODMANGR_CERT_DIR=/var/lib/podmangr/certs
+Environment=PODMANGR_PORT=443
+
+# Restart policy
+Restart=always
+RestartSec=5
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=podmangr
+
+[Install]
+WantedBy=multi-user.target

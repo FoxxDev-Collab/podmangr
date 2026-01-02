@@ -1,0 +1,6 @@
+Important: Full deployment workflow Whenever you change the frontend, you need to:
+Build frontend: cd podmangr-frontend && npm run build
+Copy to backend: rm -rf ../podmangr-backend/frontend_dist/* && cp -r out/* ../podmangr-backend/frontend_dist/
+Rebuild backend: cd ../podmangr-backend && /usr/local/go/bin/go build -o podmangr
+Restart server: sudo ./podmangr (or restart systemd service)
+The frontend is embedded at compile time using Go's //go:embed directive, so any frontend changes require rebuilding the backend binary to be included.

@@ -1,0 +1,193 @@
+package main
+
+import (
+	"embed"
+	"io/fs"
+	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+
+	"podmangr-backend/internal/api"
+	"podmangr-backend/internal/auth"
+	"podmangr-backend/internal/certs"
+	"podmangr-backend/internal/database"
+	"podmangr-backend/internal/models"
+)
+
+//go:embed frontend_dist/*
+var frontendFS embed.FS
+
+// staticFileHandler serves static files with proper handling for Next.js static export
+type staticFileHandler struct {
+	fs fs.FS
+}
+
+func (h *staticFileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/")
+	if path == "" {
+		path = "index.html"
+	}
+
+	// Try to open the exact file first
+	f, err := h.fs.Open(path)
+	if err == nil {
+		f.Close()
+		http.FileServer(http.FS(h.fs)).ServeHTTP(w, r)
+		return
+	}
+
+	// If it's a directory request (ends with /), try index.html inside it
+	if strings.HasSuffix(path, "/") {
+		indexPath := path + "index.html"
+		if f, err := h.fs.Open(indexPath); err == nil {
+			f.Close()
+			http.FileServer(http.FS(h.fs)).ServeHTTP(w, r)
+			return
+		}
+	}
+
+	// Try adding .html extension for clean URLs (Next.js static export creates .html files)
+	htmlPath := path + ".html"
+	if f, err := h.fs.Open(htmlPath); err == nil {
+		f.Close()
+		// Rewrite the request path to include .html
+		r.URL.Path = "/" + htmlPath
+		http.FileServer(http.FS(h.fs)).ServeHTTP(w, r)
+		return
+	}
+
+	// If nothing else works and it's not a static asset request, serve index.html for SPA routing
+	if !strings.Contains(path, ".") || strings.HasPrefix(path, "_next/") {
+		// For SPA routes without extensions, serve index.html
+		r.URL.Path = "/index.html"
+		http.FileServer(http.FS(h.fs)).ServeHTTP(w, r)
+		return
+	}
+
+	// Fall back to the default file server (will return 404 for non-existent files)
+	http.FileServer(http.FS(h.fs)).ServeHTTP(w, r)
+}
+
+func main() {
+	// Get database path from environment or default
+	dbPath := os.Getenv("PODMANGR_DB_PATH")
+	if dbPath == "" {
+		// Default to current directory for development
+		dbPath = "./podmangr.db"
+	}
+
+	// Ensure absolute path
+	if !filepath.IsAbs(dbPath) {
+		cwd, _ := os.Getwd()
+		dbPath = filepath.Join(cwd, dbPath)
+	}
+
+	// Initialize database
+	log.Printf("Initializing database at %s", dbPath)
+	if err := database.Open(database.Config{Path: dbPath}); err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer database.Close()
+
+	// Create default admin user if no users exist
+	if err := createDefaultAdminIfNeeded(); err != nil {
+		log.Printf("Warning: failed to create default admin: %v", err)
+	}
+
+	// Initialize auth service
+	authSvc := auth.NewService()
+
+	e := echo.New()
+	e.HideBanner = true
+
+	// Middleware
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOriginFunc: func(origin string) (bool, error) {
+			// Allow all origins in development
+			// TODO: Restrict this in production
+			return true, nil
+		},
+		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch, http.MethodOptions},
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, "X-CSRF-Token", "Upgrade", "Connection", "Sec-WebSocket-Key", "Sec-WebSocket-Version"},
+		AllowCredentials: true,
+	}))
+
+	// API routes
+	apiGroup := e.Group("/api")
+	api.RegisterRoutes(apiGroup, authSvc)
+
+	// Serve embedded frontend in production with proper handling for Next.js static export
+	frontendContent, err := fs.Sub(frontendFS, "frontend_dist")
+	if err == nil {
+		handler := &staticFileHandler{fs: frontendContent}
+		e.GET("/*", echo.WrapHandler(handler))
+	}
+
+	// Get port from environment or default
+	port := os.Getenv("PODMANGR_PORT")
+	if port == "" {
+		port = "443"
+	}
+
+	// Get cert directory (next to database or from env)
+	certDir := os.Getenv("PODMANGR_CERT_DIR")
+	if certDir == "" {
+		certDir = filepath.Join(filepath.Dir(dbPath), "certs")
+	}
+
+	// Check if we should use HTTP (for development)
+	useHTTP := os.Getenv("PODMANGR_USE_HTTP") == "true"
+
+	if useHTTP {
+		log.Printf("Starting Podmangr backend on HTTP port %s (insecure mode)", port)
+		e.Logger.Fatal(e.Start(":" + port))
+	} else {
+		// Ensure TLS certificates exist
+		certPath, keyPath, err := certs.EnsureCertificates(certDir)
+		if err != nil {
+			log.Fatalf("Failed to setup TLS certificates: %v", err)
+		}
+		log.Printf("Using TLS certificates from %s", certDir)
+		log.Printf("Starting Podmangr backend on HTTPS port %s", port)
+		e.Logger.Fatal(e.StartTLS(":"+port, certPath, keyPath))
+	}
+}
+
+// createDefaultAdminIfNeeded creates a default admin user if no users exist
+func createDefaultAdminIfNeeded() error {
+	userRepo := database.NewUserRepo()
+
+	count, err := userRepo.Count()
+	if err != nil {
+		return err
+	}
+
+	if count > 0 {
+		return nil // Users already exist
+	}
+
+	// Create default admin
+	log.Println("Creating default admin user (admin/admin) - CHANGE THIS PASSWORD!")
+
+	passwordHash, err := auth.HashPassword("admin")
+	if err != nil {
+		return err
+	}
+
+	admin := &models.User{
+		Username:     "admin",
+		DisplayName:  "Administrator",
+		PasswordHash: passwordHash,
+		Role:         models.RoleAdmin,
+		AuthType:     models.AuthTypeLocal,
+	}
+
+	return userRepo.Create(admin)
+}
